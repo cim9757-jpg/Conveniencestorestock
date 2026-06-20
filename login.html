@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 - 재고모아</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <nav class="navbar" id="navbar"></nav>
+
+    <main class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1 class="auth-title">로그인</h1>
+                <p class="auth-subtitle">편의점 실시간 재고 조회를 위해 로그인하세요.</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username" class="form-label">아이디</label>
+                    <input type="text" id="username" class="form-control" placeholder="아이디를 입력하세요" required autofocus autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="password" class="form-label">비밀번호</label>
+                    <input type="password" id="password" class="form-control" placeholder="비밀번호를 입력하세요" required>
+                </div>
+                <button type="submit" class="btn btn-primary auth-submit-btn">로그인</button>
+            </form>
+            <div class="auth-footer">
+                <span>아직 계정이 없으신가요?</span>
+                <a href="register.html">회원가입</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 재고모아. All rights reserved.</p>
+    </footer>
+
+    <script src="static/js/data.js"></script>
+    <script src="static/js/main.js"></script>
+    <script>
+        renderNavbar('');
+
+        // 이미 로그인 상태면 홈으로
+        if (isLoggedIn()) location.href = 'index.html';
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                showFlash('아이디와 비밀번호를 모두 입력해 주세요.', 'danger');
+                return;
+            }
+
+            const result = loginUser(username, password);
+            if (result.success) {
+                showFlash(username + '님, 환영합니다!', 'success');
+                // next 파라미터가 있으면 해당 페이지로 이동
+                const params = new URLSearchParams(window.location.search);
+                const next = params.get('next');
+                setTimeout(() => {
+                    location.href = next || 'index.html';
+                }, 500);
+            } else {
+                showFlash(result.message, 'danger');
+            }
+        });
+    </script>
+</body>
+</html>

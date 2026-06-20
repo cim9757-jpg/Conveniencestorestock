@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 - 재고모아</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <nav class="navbar" id="navbar"></nav>
+
+    <main class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1 class="auth-title">회원가입</h1>
+                <p class="auth-subtitle">간편하게 회원가입을 하고 편의점 재고 정보를 확인해 보세요.</p>
+            </div>
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="username" class="form-label">아이디</label>
+                    <input type="text" id="username" class="form-control" placeholder="아이디를 입력하세요" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="password" class="form-label">비밀번호</label>
+                    <input type="password" id="password" class="form-control" placeholder="비밀번호를 입력하세요" required>
+                </div>
+                <div class="form-group">
+                    <label for="password_confirm" class="form-label">비밀번호 확인</label>
+                    <input type="password" id="password_confirm" class="form-control" placeholder="비밀번호를 한번 더 입력하세요" required>
+                </div>
+                <button type="submit" class="btn btn-primary auth-submit-btn">회원가입</button>
+            </form>
+            <div class="auth-footer">
+                <span>이미 계정이 있으신가요?</span>
+                <a href="login.html">로그인</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 재고모아. All rights reserved.</p>
+    </footer>
+
+    <script src="static/js/data.js"></script>
+    <script src="static/js/main.js"></script>
+    <script>
+        renderNavbar('');
+
+        if (isLoggedIn()) location.href = 'index.html';
+
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('password_confirm').value;
+
+            if (!username || !password) {
+                showFlash('아이디와 비밀번호를 모두 입력해 주세요.', 'danger');
+                return;
+            }
+            if (password !== confirm) {
+                showFlash('비밀번호가 일치하지 않습니다.', 'danger');
+                return;
+            }
+
+            const result = registerUser(username, password);
+            if (result.success) {
+                showFlash(result.message, 'success');
+                setTimeout(() => { location.href = 'login.html'; }, 1000);
+            } else {
+                showFlash(result.message, 'danger');
+            }
+        });
+    </script>
+</body>
+</html>

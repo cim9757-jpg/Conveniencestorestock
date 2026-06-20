@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상품 검색 - 재고모아</title>
+    <meta name="description" content="원하는 상품을 검색하고, 가까운 편의점의 실시간 재고를 확인하세요.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <nav class="navbar" id="navbar"></nav>
+
+    <main class="container" style="padding-top:2rem;">
+        <section class="search-page-header">
+            <h1 class="section-title" style="text-align:center;margin-bottom:1.5rem;">
+                <i class="fas fa-search" style="color:var(--accent);"></i> 상품 검색
+            </h1>
+            <form class="search-form" onsubmit="doSearch(event)" style="margin-bottom:1.5rem;">
+                <div class="search-box-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="search-input" placeholder="상품명을 입력하세요 (예: 불닭, 삼각김밥)" class="search-input" autocomplete="off">
+                    <button type="submit" class="search-btn">검색</button>
+                </div>
+            </form>
+            <div class="category-tags" id="category-tags" style="margin-bottom:2rem;"></div>
+        </section>
+
+        <div id="search-status" style="margin-bottom:1rem;font-size:0.9rem;color:var(--text-secondary);"></div>
+        <div class="product-grid" id="product-grid"></div>
+        <div id="no-results" style="display:none;text-align:center;padding:3rem;color:var(--text-muted);">
+            <i class="fas fa-box-open" style="font-size:3rem;margin-bottom:1rem;display:block;"></i>
+            <p style="font-size:1.1rem;">검색 결과가 없습니다.</p>
+            <p style="font-size:0.85rem;margin-top:0.5rem;">다른 검색어를 시도해 보세요.</p>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 재고모아. All rights reserved.</p>
+    </footer>
+
+    <script src="static/js/data.js"></script>
+    <script src="static/js/main.js"></script>
+    <script>
+        renderNavbar('search');
+
+        const params = new URLSearchParams(window.location.search);
+        const qParam = params.get('q') || '';
+        const catParam = params.get('category') || '';
+
+        // 검색 입력에 기존 쿼리 반영
+        document.getElementById('search-input').value = qParam;
+
+        // 카테고리 태그 렌더링
+        const tagsContainer = document.getElementById('category-tags');
+        const allActive = !catParam ? 'active' : '';
+        tagsContainer.innerHTML = `<a href="search.html${qParam ? '?q='+encodeURIComponent(qParam) : ''}" class="category-tag ${allActive}">전체</a>`;
+        getCategories().forEach(cat => {
+            const isActive = cat === catParam ? 'active' : '';
+            const qStr = qParam ? `q=${encodeURIComponent(qParam)}&` : '';
+            tagsContainer.innerHTML += `<a href="search.html?${qStr}category=${encodeURIComponent(cat)}" class="category-tag ${isActive}">${cat}</a>`;
+        });
+
+        // 검색 실행
+        const results = searchProducts(qParam, catParam);
+        const grid = document.getElementById('product-grid');
+        const noResults = document.getElementById('no-results');
+        const statusEl = document.getElementById('search-status');
+
+        if (results.length > 0) {
+            let statusText = '';
+            if (qParam) statusText += `"${qParam}" `;
+            if (catParam) statusText += `[${catParam}] `;
+            statusText += `검색 결과 ${results.length}개`;
+            statusEl.textContent = statusText;
+
+            results.forEach(p => {
+                grid.innerHTML += createProductCardHTML(p);
+            });
+        } else {
+            noResults.style.display = 'block';
+            if (qParam || catParam) {
+                statusEl.textContent = `"${qParam || catParam}" 에 대한 검색 결과가 없습니다.`;
+            }
+        }
+
+        function doSearch(e) {
+            e.preventDefault();
+            const q = document.getElementById('search-input').value.trim();
+            const catStr = catParam ? `&category=${encodeURIComponent(catParam)}` : '';
+            location.href = `search.html?q=${encodeURIComponent(q)}${catStr}`;
+        }
+    </script>
+</body>
+</html>

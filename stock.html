@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>재고 확인 - 재고모아</title>
+    <meta name="description" content="선택한 상품의 주변 편의점 실시간 재고 현황을 지도와 함께 확인하세요.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="static/css/style.css">
+    <style>
+        .stock-hero { text-align:center; padding:2rem 0 1rem; }
+        .stock-hero .product-icon { font-size:3rem; color:var(--accent); margin-bottom:0.5rem; }
+        .stock-hero h1 { font-size:1.6rem; margin-bottom:0.3rem; }
+        .stock-hero .product-meta { font-size:0.9rem; color:var(--text-secondary); }
+
+        .stock-map { width:100%; height:400px; border-radius:var(--radius); margin-bottom:2rem; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.15); }
+
+        .store-list { display:flex; flex-direction:column; gap:1rem; margin-bottom:2rem; }
+        .store-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .store-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.12); }
+        .store-info h3 { font-size:1rem; margin-bottom:0.3rem; color:var(--text-primary); }
+        .store-info .store-address { font-size:0.8rem; color:var(--text-muted); }
+        .store-info .store-distance { font-size:0.8rem; color:var(--accent); font-weight:600; margin-top:0.2rem; }
+        .store-stock {
+            text-align: right;
+            min-width: 100px;
+        }
+        .stock-badge {
+            display: inline-block;
+            padding: 0.35rem 0.8rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .stock-badge.in-stock { background: rgba(16,185,129,0.15); color:#10b981; }
+        .stock-badge.low-stock { background: rgba(245,158,11,0.15); color:#f59e0b; }
+        .stock-badge.out-of-stock { background: rgba(239,68,68,0.15); color:#ef4444; }
+        .stock-qty { font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar" id="navbar"></nav>
+
+    <main class="container" style="padding-top:1rem;">
+        <div id="login-required" style="display:none;text-align:center;padding:4rem 1rem;">
+            <i class="fas fa-lock" style="font-size:3rem;color:var(--text-muted);margin-bottom:1rem;display:block;"></i>
+            <h2 style="color:var(--text-primary);margin-bottom:0.5rem;">로그인이 필요합니다</h2>
+            <p style="color:var(--text-secondary);margin-bottom:1.5rem;">재고 정보를 확인하려면 먼저 로그인해 주세요.</p>
+            <a href="login.html" class="btn btn-primary">로그인하기</a>
+        </div>
+
+        <div id="stock-content" style="display:none;">
+            <div class="stock-hero">
+                <div class="product-icon" id="product-icon"></div>
+                <h1 id="product-name"></h1>
+                <p class="product-meta">
+                    <span id="product-category"></span> · <span id="product-price"></span>
+                </p>
+            </div>
+
+            <h2 class="section-title" style="font-size:1.1rem;margin-bottom:1rem;">
+                <i class="fas fa-map-marked-alt" style="color:var(--accent);"></i> 주변 편의점 재고 현황
+            </h2>
+            <div class="stock-map" id="map"></div>
+
+            <h2 class="section-title" style="font-size:1.1rem;margin-bottom:1rem;">
+                <i class="fas fa-list" style="color:var(--accent);"></i> 매장별 상세 재고
+            </h2>
+            <div class="store-list" id="store-list"></div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 재고모아. All rights reserved.</p>
+    </footer>
+
+    <script src="static/js/data.js"></script>
+    <script src="static/js/main.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        renderNavbar('');
+
+        const params = new URLSearchParams(window.location.search);
+        const productId = parseInt(params.get('id'));
+
+        if (!isLoggedIn()) {
+            document.getElementById('login-required').style.display = 'block';
+        } else if (!productId || !PRODUCTS.find(p => p.id === productId)) {
+            document.getElementById('stock-content').style.display = 'block';
+            document.getElementById('stock-content').innerHTML = `
+                <div style="text-align:center;padding:4rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:3rem;color:#f59e0b;margin-bottom:1rem;display:block;"></i>
+                    <h2>상품을 찾을 수 없습니다</h2>
+                    <a href="search.html" class="btn btn-primary" style="margin-top:1rem;">상품 검색으로 돌아가기</a>
+                </div>`;
+        } else {
+            document.getElementById('stock-content').style.display = 'block';
+            const product = PRODUCTS.find(p => p.id === productId);
+
+            document.getElementById('product-icon').innerHTML = `<i class="fas ${product.icon}"></i>`;
+            document.getElementById('product-name').textContent = product.name;
+            document.getElementById('product-category').textContent = product.category;
+            document.getElementById('product-price').textContent = formatPrice(product.price);
+
+            // 사용자 위치 기반 (기본: 고려대 정문)
+            const userLat = BASE_LAT;
+            const userLng = BASE_LNG;
+
+            // 위치 정보 시도
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => renderStockData(product, pos.coords.latitude, pos.coords.longitude),
+                    () => renderStockData(product, userLat, userLng)
+                );
+            } else {
+                renderStockData(product, userLat, userLng);
+            }
+        }
+
+        function renderStockData(product, lat, lng) {
+            const storeStocks = getStoreStocksForProduct(product.id, lat, lng);
+
+            // 지도 초기화
+            const map = L.map('map').setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // 사용자 위치 마커
+            L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: '<div style="background:#7a0c23;color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-user"></i></div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(map).bindPopup('<b>내 위치</b>');
+
+            // 매장 리스트 렌더링
+            const listEl = document.getElementById('store-list');
+
+            storeStocks.forEach(ss => {
+                // 지도 마커
+                const markerColor = ss.status_class === 'in-stock' ? '#10b981' :
+                                    ss.status_class === 'low-stock' ? '#f59e0b' : '#ef4444';
+                L.marker([ss.latitude, ss.longitude], {
+                    icon: L.divIcon({
+                        className: 'store-marker',
+                        html: `<div style="background:${markerColor};color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${ss.quantity}</div>`,
+                        iconSize: [26, 26],
+                        iconAnchor: [13, 13]
+                    })
+                }).addTo(map).bindPopup(`<b>${ss.store_name}</b><br>재고: ${ss.quantity}개 (${ss.status})<br>거리: ${formatDistance(ss.distance)}`);
+
+                // 카드
+                listEl.innerHTML += `
+                    <div class="store-card">
+                        <div class="store-info">
+                            <h3>${ss.store_name}</h3>
+                            <div class="store-address"><i class="fas fa-map-pin"></i> ${ss.address}</div>
+                            <div class="store-distance"><i class="fas fa-walking"></i> ${formatDistance(ss.distance)}</div>
+                        </div>
+                        <div class="store-stock">
+                            <span class="stock-badge ${ss.status_class}">${ss.status}</span>
+                            <div class="stock-qty">${ss.quantity}개</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>
